@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#181117">
+<title>Диск</title>
+<style>
+body{min-height:100svh;box-sizing:border-box;margin:0;padding:30px;display:grid;place-items:center;background:#181117;color:#fff3e7;font:1.06rem/1.6 system-ui,sans-serif}
+main{max-width:25rem}h1{margin:0;font:2.25rem/1.1 Georgia,serif}p{color:#e2c1c0}
+</style>
+<body>
+<main>
+<h1>Диск</h1>
+<p id="status" role="status">Открываю…</p>
+<noscript>Чтобы посмотреть диск, открой ссылку в браузере с JavaScript.</noscript>
+</main>
+<script>
+(async () => {
+  const status = document.getElementById('status');
+  const storageKey = 'november-disc-2026:access';
+  const fragmentKey = new URLSearchParams(location.hash.slice(1)).get('key');
+  try {
+    let access = fragmentKey;
+    if (access === null) {
+      try { access = sessionStorage.getItem(storageKey); } catch {}
+    }
+    if (!access || !/^[A-Za-z0-9_-]{43}$/.test(access)) {
+      status.textContent = 'Открой полную ссылку из сообщения.';
+      return;
+    }
+
+    const encoded = access.replace(/-/g, '+').replace(/_/g, '/');
+    const bytes = Uint8Array.from(atob(encoded + '='), (value) => value.charCodeAt(0));
+    const key = await crypto.subtle.importKey('raw', bytes, 'AES-GCM', false, ['decrypt']);
+    const response = await fetch('./disc.bin');
+    if (!response.ok) throw new Error('Disc could not be loaded');
+    const data = new Uint8Array(await response.arrayBuffer());
+    const decoded = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: data.subarray(0, 12) }, key, data.subarray(12));
+    if (fragmentKey) {
+      try {
+        sessionStorage.setItem(storageKey, access);
+      } catch {}
+    }
+    const html = new TextDecoder().decode(decoded);
+    document.open();
+    document.write(html);
+    document.close();
+  } catch {
+    status.textContent = 'Диск не открылся. Проверь, что ссылка скопирована целиком, и открой её в браузере.';
+  }
+})();
+</script>
+</body>
+</html>
