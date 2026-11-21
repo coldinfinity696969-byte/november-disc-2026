@@ -20,14 +20,15 @@ main{max-width:25rem}h1{margin:0;font:2.25rem/1.1 Georgia,serif}p{color:#e2c1c0}
 (async () => {
   const status = document.getElementById('status');
   const storageKey = 'november-disc-2026:access';
-  const fragmentKey = new URLSearchParams(location.hash.slice(1)).get('key');
+  const url = new URL(location.href);
+  const linkKey = url.searchParams.get('key') ?? new URLSearchParams(url.hash.slice(1)).get('key');
   try {
-    let access = fragmentKey;
+    let access = linkKey;
     if (access === null) {
       try { access = sessionStorage.getItem(storageKey); } catch {}
     }
     if (!access || !/^[A-Za-z0-9_-]{43}$/.test(access)) {
-      status.textContent = 'Открой полную ссылку из сообщения.';
+      status.textContent = 'Для открытия нужен адрес из сообщения с ключом.';
       return;
     }
 
@@ -38,7 +39,7 @@ main{max-width:25rem}h1{margin:0;font:2.25rem/1.1 Georgia,serif}p{color:#e2c1c0}
     if (!response.ok) throw new Error('Disc could not be loaded');
     const data = new Uint8Array(await response.arrayBuffer());
     const decoded = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: data.subarray(0, 12) }, key, data.subarray(12));
-    if (fragmentKey) {
+    if (linkKey) {
       try {
         sessionStorage.setItem(storageKey, access);
       } catch {}
